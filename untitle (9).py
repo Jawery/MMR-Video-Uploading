@@ -20,7 +20,7 @@ datum = ""
 def get_data(): #Retrieves data from TCP server on timing computer in order to be manipulated 
       
       while 1:
-      	while tcp_connect = False:
+            while tcp_connect = False:
         	      try:
             	      s.connect((TCP_IP, TCP_PORT)) #Under the assumption that an error will rise if unable to connect to port
                         tcp_connect = True
