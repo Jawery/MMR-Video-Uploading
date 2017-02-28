@@ -15,7 +15,7 @@ is_recording = False
 time_li = [1,2,3]
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #possibly need a bind function for s
 tcp_connect = False
-datum = ""
+datum = "sample base"
 
 def get_data(): #Retrieves data from TCP server on timing computer in order to be manipulated 
       
