@@ -1,4 +1,4 @@
-import socket
+mport socket
 import time
 import win32com.client
 
@@ -14,22 +14,26 @@ long_race_name_2 = ""
 is_recording = False
 time_li = [1,2,3]
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #possibly need a bind function for s
+tcp_connect = False
+datum = ""
 
 def get_data(): #Retrieves data from TCP server on timing computer in order to be manipulated 
       
     while 1:
-        try:
-            s.connect((TCP_IP, TCP_PORT)) #Under the assumption that an error will rise if unable to connect to port
-        except:
-            pass
-        try:
-            return s.recv(BUFFER_SIZE) #Using a seperate try function under the impression that attempting to connect
-        except:                           #To an already connected server will rise an error
-            time.sleep(5)
+      	while tcp_connect = False:
+        	try:
+            	s.connect((TCP_IP, TCP_PORT)) #Under the assumption that an error will rise if unable to connect to port
+                tcp_connect = True
+        	except:
+            	time.sleep(5)
+       	while datum:
+          	datum = s.recv(BUFFER_SIZE)
+          	if datum:
+              	return datum
+        tcp_connect = False
           
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
       
-    
     f = open("RaceName.txt", "w")
     f.write(long_race_name_1)
     f.close()
@@ -73,56 +77,5 @@ while 1:
         if long_race_name_1 != long_race_name_2:
             long_race_name_2 = long_race_name_1
             set_race_name()
-        
-              
-      
     
-#Referential Code Segments  
-'''
-#-----TCP CLIENT-----#
-import socket
-
-TCP_IP = '127.0.0.1'
-TCP_PORT = 5005
-BUFFER_SIZE = 1024
-MESSAGE = "Hello, World!"
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((TCP_IP, TCP_PORT))
-s.send(MESSAGE)
-data = s.recv(BUFFER_SIZE)
-s.close()
-
-print "received data:", data
-
-
-#-----TCP SERVER-----#
-import socket
-
-
-TCP_IP = '127.0.0.1'
-TCP_PORT = 5005
-BUFFER_SIZE = 20  # Normally 1024, but we want fast response
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((TCP_IP, TCP_PORT))
-s.listen(1)
-
-conn, addr = s.accept()
-print 'Connection address:', addr
-while 1:
-    data = conn.recv(BUFFER_SIZE)
-    if not data: break
-    print "received data:", data
-    conn.send(data)  # echo
-conn.close()
-
-
-#-----PRESSING A BUTTON-----#
-
-import win32com.client
-wsh = win32com.client.Dispatch("WScript.Shell")
-wsh.AppActivate("app")
-wsh.SendKeys("k")
-'''
 
