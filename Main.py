@@ -1,4 +1,4 @@
-mport socket
+import socket
 import time
 import win32com.client
 
@@ -15,21 +15,21 @@ is_recording = False
 time_li = [1,2,3]
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #possibly need a bind function for s
 tcp_connect = False
-datum = ""
+datum = "sample base"
 
 def get_data(): #Retrieves data from TCP server on timing computer in order to be manipulated 
       
     while 1:
-      	while tcp_connect = False:
-        	try:
-            	s.connect((TCP_IP, TCP_PORT)) #Under the assumption that an error will rise if unable to connect to port
+        while tcp_connect == False:
+            try:
+                s.connect((TCP_IP, TCP_PORT)) #Under the assumption that an error will rise if unable to connect to port
                 tcp_connect = True
-        	except:
-            	time.sleep(5)
-       	while datum:
-          	datum = s.recv(BUFFER_SIZE)
-          	if datum:
-              	return datum
+            except:
+                time.sleep(5)
+        while datum:
+            datum = s.recv(BUFFER_SIZE)
+            if datum:
+                return datum
         tcp_connect = False
           
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
@@ -70,12 +70,9 @@ while 1:
     elif cut_data[0] == '"$B"':
         clas = cut_data[1]
       
-      
     elif cut_data[0] == '"$C"':
         race = cut_data[1]
         long_race_name_1 = race + clas
         if long_race_name_1 != long_race_name_2:
             long_race_name_2 = long_race_name_1
             set_race_name()
-    
-
