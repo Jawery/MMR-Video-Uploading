@@ -24,10 +24,8 @@ def get_data(): #Retrieves data from TCP server on timing computer in order to b
             try:
                 s.connect((TCP_IP, TCP_PORT))
                 tcp_connect = True
-                
             except:
                 time.sleep(5)
-        
         while datum:
             datum = s.recv(BUFFER_SIZE)
             if datum:
