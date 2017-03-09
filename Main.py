@@ -1,37 +1,32 @@
-import socket
+#!/usr/bin/python           
+
+import socket               
 import time
+import mysql.connector
+from mysql.connector import errorcode
+import sys
 import win32com.client
+import subprocess
 
-TCP_IP = '127.0.0.1'
-TCP_PORT = 12345
-BUFFER_SIZE = 1024
-data = ""
-cut_data = ""
-clas = ""
-race = ""
-long_race_name_1 = ""
-long_race_name_2 = ""
-is_recording = False
-time_li = [1,2,3]
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-tcp_connect = False
+#IMPORTANT GLOBALS
+host = "172.21.25.43"
+port = 12345                # Reserve a port for your service.
+attempt = 0
+osb_fgw_name = "OBS 0.16.6 (64bit, windows) - Profile: MMR - Scenes: MMR"
 
-def get_data(): #Retrieves data from TCP server on timing computer in order to be manipulated 
-    
-    datum = "sample"
-    while 1:
-        while tcp_connect == False:
-            try:
-                s.connect((TCP_IP, TCP_PORT))
-                tcp_connect = True
-            except:
-                time.sleep(5)
-        while datum:
-            datum = s.recv(BUFFER_SIZE)
-            if datum:
-                return datum
-        tcp_connect = False
-          
+#IMPORTANT PRETESTS 
+
+#### SEE IF WE CAN FIND OSB RUNNING
+
+shell = win32com.client.Dispatch("WScript.Shell")
+if not shell.AppActivate(osb_fgw_name):
+        print "Open Source Broadcaster is not running or can not be brought to the foreground looking for %s \nEXITING" % osb_fgw_name
+        sys.exit(1)
+
+if shell.AppActivate(osb_fgw_name):
+        print "OSB found with name %s" % osb_fgw_name
+
+
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
       
     f = open("RaceName.txt", "w")
@@ -54,25 +49,29 @@ def stop_recording(): #Opens and virtually presses button to stop recording
     wsh = win32com.client.Dispatch("WScript.Shell")
     wsh.AppActivate("OpenSource Broadcaster")
     wsh.SendKeys("F10")
-    
+
+
 while 1:
-    data = get_data()
-    cut_data = data.split(",")
-    
-    if cut_data[0] == '"$F"':
-        update_li(time_li)  
-        if cut_data[4] == '"0:01"' and is_recording == False:
-            start_recording()
-        elif time_li[0] == time_li[1] == time_li[2] and is_recording == True:
-            stop_recording()
-    
-    
-    elif cut_data[0] == '"$B"':
-        clas = cut_data[1]
-      
-    elif cut_data[0] == '"$C"':
-        race = cut_data[1]
-        long_race_name_1 = race + clas
-        if long_race_name_1 != long_race_name_2:
-            long_race_name_2 = long_race_name_1
-            set_race_name()
+        s = socket.socket()
+        attempt+=1
+        print "attempt %s" % attempt
+        try:
+                s.connect((host, port))
+                l =  s.recv(1024)
+                #if l then print "connected to server"
+                #print s.recv(1024)
+                while (l):
+
+                        l = s.recv(1024)
+                        print "%s" % l #f.close()
+                        if "$F" in l:
+                                print "We found race heartneat data"
+
+
+                print('Connection terminated from server side')
+
+        except:
+                print "Server did not respond"
+                time.sleep(1)
+
+s.close
