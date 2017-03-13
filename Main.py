@@ -16,7 +16,9 @@ osb_fgw_name = "OBS 0.16.6 (64bit, windows) - Profile: MMR - Scenes: MMR"
 is_recording = False
 race_class = "no set class"
 race_desc = "not set desc"
+race_name = "not yet set"
 elist = []
+debug = True
 #IMPORTANT PRETESTS 
 
 #### SEE IF WE CAN FIND OSB RUNNING
@@ -39,7 +41,9 @@ if shell.AppActivate(osb_fgw_name):
 
 #### CHECK DB CONNECTIVITY #######
 try:
-  cnx = mysql.connector.connect(user='root', password='no_password_on_github',database='raceinfo')
+  cnx = mysql.connector.connect(user='root', password='',database='raceinfo')
+  cursor = cnx.cursor()
+  print "Database connection successful"
 except mysql.connector.Error as err:
   if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
     print("Something is wrong with your user name or password")
@@ -52,15 +56,12 @@ except mysql.connector.Error as err:
     print(err)
 
 
-cursor = cnx.cursor()
-print "Database connection successful"
-
 print "Program startup at %s" % int(time.time())
 
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
       
     f = open("RaceName.txt", "w")
-    f.write(long_race_name_1)
+    f.write(race_name)
     f.close()
     
 def update_li(li): # Updates the list of most recent times in order to determine the end of the race
@@ -71,21 +72,34 @@ def update_li(li): # Updates the list of most recent times in order to determine
 def start_recording(): #Opens and virtually presses button to start recording
   
     wsh = win32com.client.Dispatch("WScript.Shell")
-    wsh.AppActivate("OpenSource Broadcaster")
-    wsh.SendKeys("F10")
-    print "starting record"
-    file = "C:\\placeholder.txt"
-    sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
-    cursor.execute(sql)
-    cnx.commit()
-    is_recording == True
+    if wsh.AppActivate(osb_fgw_name):
+        #time.sleep(1)
+        wsh.SendKeys("{F10}")
+        print "starting record"
+        file = "C:\\placeholder.txt"
+        sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
+        cursor.execute(sql)
+        cnx.commit()
+        is_recording == True
+        if debug: print "End of start_recording" 
+    else:
+        print "something went wrong" 
 
 def stop_recording(): #Opens and virtually presses button to stop recording
 
-    wsh = win32com.client.Dispatch("WScript.Shell")
-    wsh.AppActivate("OpenSource Broadcaster")
-    wsh.SendKeys("F10")
-    is_recording == False
+   if wsh.AppActivate(osb_fgw_name):
+        #time.sleep(1)
+        wsh.SendKeys("{F11}")
+        print "stopping record"
+        #file = "C:\\placeholder.txt"
+        #sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
+        #cursor.execute(sql)
+        #cnx.commit()
+        is_recording == False
+        
+        if debug: print "End of stop_recording" 
+   else:
+        print "something went wrong" 
 
 
 def stop_test():
@@ -93,9 +107,6 @@ def stop_test():
                 return True
         else:
                 return False
-
-
-
 
 def update_timeleft():
         f = open("timeleft.txt", "w")
@@ -107,53 +118,47 @@ def update_timeleft():
 
 
 
-
-
-
-
-
-
-
-
-while 1:
-        s = socket.socket()
-        attempt+=1
-        print "attempt %s" % attempt
+while 1:                                                                        #Infinite loop that is always trying to connect to the scoring server
+        s = socket.socket()                                                     #Create socket  
+        attempt+=1                                                              #Create counter for cpnnect attempts
+        print "attempt %s" % attempt                                           #Show which attempt we are on.
         try:
-                s.connect((host, port))
-                l =  s.recv(1024)
+                s.connect((host, port))                                         #Attempt to connect to remote server
+                l =  s.recv(1024)                                               #create recieve queue
                 #if l then print "connected to server"
                 #print s.recv(1024)
-                while (l):
+                while (l):                                                      #while items are in the queue and we are connected process 
 
-                        l = s.recv(1024)
-                        print "%s" % l.rstrip('\n') #f.close()
-
-                        cut_data = l.split(",")
+                        l = s.recv(1024)                                        #set queue to 1024 bytes
+                        print "%s" % l.rstrip('\n')                             #strip character from each line recieved      
+                        cut_data = l.split(",")                                 #cut up the comma seperated values sent from scoring server
                         
-                        if cut_data[0] == '"$B"':
-                                race_desc = cut_data[2]
+                        if cut_data[0] == "$B":                               #Process data where the first value in the comma seperated vales is $B
+                                race_desc = cut_data[2]                         #extract the race description
                         
-                        if cut_data[0] == '"$C"':
-                                race_class = cut_data[2]
+                        if cut_data[0] == "$C":                               #Process data where the first value in the comma seperated vales is $B
+                                race_class = cut_data[2]                        #extract the race class
 
-                        if cut_data[0] == '"$F"':
-                                elist.insert(0,cut_data[2])
-                                update_elapsed()
-                                del elist[3:]
-                                if cut_data[4] == "\"0:01\"":
-                                        start_recording()
+                        if cut_data[0] == "$F":                               #Process data where the first value in the comma seperated vales is $F
+                                if debug: print "In $F routine"
+                                elist.insert(0,cut_data[2])                     #Push latest time left value to elist list
+                                del elist[3:]                                   #Delete all any elist list elements past the 3rd element
+                                if stop_test():
+                                        stop_recording()                                     #Checks to see if the 3 valies for time remaining are all the same if so stop recording 
+                                if cut_data[4] == "\"0:01\"":                   #Has 1 second of the race elapsed
+                                        start_recording()                       #If 1 second has elasped start recording
+                                if is_recording:                                #Check to see if we are recording 
+                                        update_timeleft()                       #Fire function to update text file with how much time is remaining
 
-                        print "cut - %s" % cut_data[0]
-                        race_name = "%s %s" % (race_class,race_desc)  
-                        print race_name
+                        cut_name = "%s %s" % (race_class,race_desc)             #set variable to concatination of $B and $C data
+                        #if cut_name != race_name:                               #set race_name to new data if it chnages
+                        #        race_name = cut_name                            #set race_name on updates
+                        #        set_race_name()                                 #write the data to the textfile
+                       
 
-                        
-                         
-                print('Connection terminated from server side')
+                print('Connection terminated from server side')                 #If we lose the connection this gets printed
 
-        except:
-                print "Server did not respond"
-                time.sleep(1)
-
-s.close
+        except:                                                                 #Exception for no connection made
+                print "Server did not respond"                                  #Print out the fact we had the execption
+                time.sleep(1)                                                   #sleep to slow down retries
+s.close                                                                         #close the socket so we can try again
