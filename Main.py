@@ -16,7 +16,7 @@ osb_fgw_name = "OBS 0.16.6 (64bit, windows) - Profile: MMR - Scenes: MMR"
 is_recording = False
 race_class = "no set class"
 race_desc = "not set desc"
-
+elist = []
 #IMPORTANT PRETESTS 
 
 #### SEE IF WE CAN FIND OSB RUNNING
@@ -39,16 +39,19 @@ if shell.AppActivate(osb_fgw_name):
 
 #### CHECK DB CONNECTIVITY #######
 try:
-  cnx = mysql.connector.connect(user='root', password='not_for_github',database='raceinfo')
+  cnx = mysql.connector.connect(user='root', password='no_password_on_github',database='raceinfo')
 except mysql.connector.Error as err:
   if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
     print("Something is wrong with your user name or password")
-  elif err.errno == errorcode.ER_BAD_DB_ERROR:
-    print("Database does not exist")
-  else:
-    print(err)
     print "Program will now exit"
     sys.exit(1)
+  elif err.errno == errorcode.ER_BAD_DB_ERROR:
+    print("Database does not exist")
+    print "Program will now exit"
+    sys.exit(1)
+    print(err)
+
+
 cursor = cnx.cursor()
 print "Database connection successful"
 
@@ -75,12 +78,41 @@ def start_recording(): #Opens and virtually presses button to start recording
     sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
     cursor.execute(sql)
     cnx.commit()
+    is_recording == True
 
 def stop_recording(): #Opens and virtually presses button to stop recording
 
     wsh = win32com.client.Dispatch("WScript.Shell")
     wsh.AppActivate("OpenSource Broadcaster")
     wsh.SendKeys("F10")
+    is_recording == False
+
+
+def stop_test():
+        if len(elist) == 3 and len(set(elist)) == 1 and not is_recording:
+                return True
+        else:
+                return False
+
+
+
+
+def update_timeleft():
+        f = open("timeleft.txt", "w")
+        f.write(cut_data[2])
+        f.close()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 while 1:
@@ -101,13 +133,23 @@ while 1:
                         
                         if cut_data[0] == '"$B"':
                                 race_desc = cut_data[2]
+                        
                         if cut_data[0] == '"$C"':
                                 race_class = cut_data[2]
+
+                        if cut_data[0] == '"$F"':
+                                elist.insert(0,cut_data[2])
+                                update_elapsed()
+                                del elist[3:]
+                                if cut_data[4] == "\"0:01\"":
+                                        start_recording()
 
                         print "cut - %s" % cut_data[0]
                         race_name = "%s %s" % (race_class,race_desc)  
                         print race_name
 
+                        
+                         
                 print('Connection terminated from server side')
 
         except:
