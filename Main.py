@@ -7,9 +7,12 @@ from mysql.connector import errorcode
 import sys
 import win32com.client
 import subprocess
+import glob
+import os
 
 #IMPORTANT GLOBALS
-host = "172.21.25.43"
+#host = "172.21.25.43"
+host = "127.0.0.1"
 port = 12345                # Reserve a port for your service.
 attempt = 0
 osb_fgw_name = "OBS 0.16.6 (64bit, windows) - Profile: MMR - Scenes: MMR"
@@ -37,11 +40,12 @@ if not shell.AppActivate(osb_fgw_name):
 if shell.AppActivate(osb_fgw_name):
         print "OSB found with name %s" % osb_fgw_name
 
-#### END OBS DETECTION
+
+### END OBS DETECTION
 
 #### CHECK DB CONNECTIVITY #######
 try:
-  cnx = mysql.connector.connect(user='root', password='mmrracing',database='raceinfo')
+  cnx = mysql.connector.connect(user='root', password='',database='raceinfo')
   cursor = cnx.cursor()
   print "Database connection successful"
 except mysql.connector.Error as err:
@@ -61,56 +65,73 @@ print "Program startup at %s" % int(time.time())
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
       
     f = open("RaceName.txt", "w")
-    f.write(race_name)
+    f.write(race_name.replace("\"",""))
     f.close()
     
 def update_li(li): # Updates the list of most recent times in order to determine the end of the race
   
     li = cut_data[4] + li
     del li[-1] #Does this work or does it simply create an instanced copy of time_li---TESTING NEEDED
+
+def latest_video_file():
+        time.sleep(5)
+        list_of_files = glob.glob('C:\Users\Emery\Videos\*.mp4') # * means all if need specific format then *.csv
+        latest_file = max(list_of_files, key=os.path.getctime)
+        print latest_file
+        return(latest_file)
+
       
 def start_recording(): #Opens and virtually presses button to start recording
   
     wsh = win32com.client.Dispatch("WScript.Shell")
     if wsh.AppActivate(osb_fgw_name):
-        #time.sleep(1)
+        time.sleep(0.25)
         wsh.SendKeys("{F10}")
+        
         print "starting record"
-        file = "C:\\placeholder.txt"
-        sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
+        file = latest_video_file()
+        sql = "insert into race_data (name, started_recording, file) values ('%s', '%s', '%s')" % (race_name.replace("\"",""),int(time.time()),file)
         cursor.execute(sql)
         cnx.commit()
-        is_recording == True
+        return(file)
+        
         if debug: print "End of start_recording" 
     else:
         print "something went wrong" 
 
 def stop_recording(): #Opens and virtually presses button to stop recording
-
+   
+   wsh = win32com.client.Dispatch("WScript.Shell")
    if wsh.AppActivate(osb_fgw_name):
-        #time.sleep(1)
+        time.sleep(0.25)
         wsh.SendKeys("{F11}")
         print "stopping record"
         #file = "C:\\placeholder.txt"
+        sql = "UPDATE race_data SET status='recording_done',finished_recording='%s' WHERE file = '%s'" % (int(time.time()),file)
+        print "THIS IS A SQL LOOK HERE ----> %s" % (sql)
         #sql = "insert into race_data (name, start, file) values ('%s', '%s', '%s')" % (race_name,int(time.time()),file)
-        #cursor.execute(sql)
-        #cnx.commit()
-        is_recording == False
-        
-        if debug: print "End of stop_recording" 
-   else:
-        print "something went wrong" 
+        cursor.execute(sql)
+        cnx.commit()
+        #is_recording = False
+        #if debug: print "End of stop_recording" 
+   #else:
+   #     print "something went wrong" 
 
 
 def stop_test():
-        if len(elist) == 3 and len(set(elist)) == 1 and not is_recording:
+
+        print "*******\n** %s **\n** %s **\n** %s **" % (len(elist),len(set(elist)),is_recording)
+        if len(elist) == 3 and len(set(elist)) == 1 and is_recording:
+                print "STOP TEST TRUE"
                 return True
         else:
+                print "STOP TEST FALSE"
                 return False
 
 def update_timeleft():
+        print "entered update time"
         f = open("timeleft.txt", "w")
-        f.write(cut_data[2])
+        f.write(cut_data[2].replace("\"",""))
         f.close()
 
 
@@ -140,20 +161,24 @@ while 1:                                                                        
                                 race_class = cut_data[2]                        #extract the race class
 
                         if cut_data[0] == "$F":                               #Process data where the first value in the comma seperated vales is $F
-                                if debug: print "In $F routine"
+                                if debug: print "%s in $F routine" % cut_data[2]
                                 elist.insert(0,cut_data[2])                     #Push latest time left value to elist list
                                 del elist[3:]                                   #Delete all any elist list elements past the 3rd element
                                 if stop_test():
-                                        stop_recording()                                     #Checks to see if the 3 valies for time remaining are all the same if so stop recording 
+                                        print "I SHOULD STOP"
+                                        stop_recording()
+                                        print "I ran stop recording"
+                                        is_recording = False                                     #Checks to see if the 3 valies for time remaining are all the same if so stop recording 
                                 if cut_data[4] == "\"0:01\"":                   #Has 1 second of the race elapsed
-                                        start_recording()                       #If 1 second has elasped start recording
-                                if is_recording:                                #Check to see if we are recording 
-                                        update_timeleft()                       #Fire function to update text file with how much time is remaining
+                                        file = start_recording()                       #If 1 second has elasped start recording
+                                        is_recording = True
+                                #if is_recording:                                #Check to see if we are recording 
+                                update_timeleft()                       #Fire function to update text file with how much time is remaining
 
-                        cut_name = "%s %s" % (race_class,race_desc)             #set variable to concatination of $B and $C data
-                        #if cut_name != race_name:                               #set race_name to new data if it chnages
-                        #        race_name = cut_name                            #set race_name on updates
-                        #        set_race_name()                                 #write the data to the textfile
+                        cut_name = "%s %s" % (race_class.rstrip('\n'),race_desc.rstrip('\n'))             #set variable to concatination of $B and $C data
+                        if cut_name != race_name:                               #set race_name to new data if it chnages
+                                race_name = cut_name                            #set race_name on updates
+                                set_race_name()                                 #write the data to the textfile
                        
 
                 print('Connection terminated from server side')                 #If we lose the connection this gets printed
