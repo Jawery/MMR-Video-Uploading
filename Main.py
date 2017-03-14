@@ -41,7 +41,7 @@ if shell.AppActivate(osb_fgw_name):
 
 #### CHECK DB CONNECTIVITY #######
 try:
-  cnx = mysql.connector.connect(user='root', password='',database='raceinfo')
+  cnx = mysql.connector.connect(user='root', password='mmrracing',database='raceinfo')
   cursor = cnx.cursor()
   print "Database connection successful"
 except mysql.connector.Error as err:
