@@ -56,7 +56,7 @@ while 1:                                       #finds files ready to be uploaded
     else:                                    #if Youtube cannot be connected to, or no files need to be uploaded, checks for transcoding
         cursor.execute('SELECT file FROM race_data WHERE status="recording_done"')
         first_row = str(cursor.fetchone())   #finds files ready to be transcoded
-        if len(first_row) >2:
+        if len(first_row) >2:                #if file exists i.e. not a blank string
             print "Transcoding file"
             sql ="UPDATE race_data SET status='transcoding',transcode_started='%s' WHERE file = '%s'" % (int(time.time()),address)
             cursor.execute(sql)
