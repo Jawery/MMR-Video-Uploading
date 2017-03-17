@@ -21,7 +21,14 @@ race_class = "no set class"
 race_desc = "not set desc"
 race_name = "not yet set"
 elist = []
-debug = True
+dict_comp = {}
+dict_g = {}
+dict_h = {}
+line_count=0
+
+
+#debug = True
+debug = False
 #IMPORTANT PRETESTS 
 
 #### SEE IF WE CAN FIND OSB RUNNING
@@ -62,6 +69,42 @@ except mysql.connector.Error as err:
 
 print "Program startup at %s" % int(time.time())
 
+def update_comp():
+    f = open("overlay.txt", "w")
+    text=""
+    #print dict_g
+    print "working on overlay\nOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+    for key in sorted(dict_g.iterkeys()):
+        #print "working on position %s" % key
+
+        (fn,ln) = find_driver(dict_g[key][key]["registration_number"])
+        #print "%s: %s %s" % (key,fn,ln)
+        text = "%s %s: %s %s\n" % (text, key,fn,ln)
+        #driver_name = dict_comp[key]
+        #text =  "%s %s\n" % (key, driver_name)
+        #print "key is %s" % key
+        #print "data for position %s %s" % (key,dict_g[key])
+        #print (dict_comp[key][key]['first_name'] , dict_comp[key][key]['last_name'])
+        #print "%s: %s %s" % (key, dict_comp[key][key]['first_name'] , dict_comp[key][key]['last_name'])
+    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    print "text is\n%s" % text
+    #find_driver("1")  
+    #print dict_g
+
+    f.write(text)
+    f.close()
+
+def find_driver(reg_num):
+        try:
+                if debug: print "looking for registration number %s" % reg_num
+                for key in dict_comp.iterkeys():
+                        if dict_comp[key][key]["number"] == reg_num:
+                                return (dict_comp[key][key]["first_name"],dict_comp[key][key]["last_name"])
+
+        except:
+                print "you broke find_driver method!"
+
+
 def set_race_name(): #Sets the new race name and heat in a .txt file which is implemented in OBS
       
     f = open("RaceName.txt", "w")
@@ -86,7 +129,7 @@ def start_recording(): #Opens and virtually presses button to start recording
     wsh = win32com.client.Dispatch("WScript.Shell")
     if wsh.AppActivate(osb_fgw_name):
         time.sleep(0.25)
-        wsh.SendKeys("{F10}")
+        #wsh.SendKeys("{F10}")
         
         print "starting record"
         file = latest_video_file()
@@ -120,16 +163,16 @@ def stop_recording(): #Opens and virtually presses button to stop recording
 
 def stop_test():
 
-        print "*******\n** %s **\n** %s **\n** %s **" % (len(elist),len(set(elist)),is_recording)
+        if debug: print "*******\n** %s **\n** %s **\n** %s **" % (len(elist),len(set(elist)),is_recording)
         if len(elist) == 3 and len(set(elist)) == 1 and is_recording:
-                print "STOP TEST TRUE"
+                if debug: print "STOP TEST TRUE"
                 return True
         else:
-                print "STOP TEST FALSE"
+                if debug: print "STOP TEST FALSE"
                 return False
 
 def update_timeleft():
-        print "entered update time"
+        if debug: print "entered update time"
         f = open("timeleft.txt", "w")
         f.write(cut_data[2].replace("\"",""))
         f.close()
@@ -150,17 +193,24 @@ while 1:                                                                        
                 #print s.recv(1024)
                 while (l):                                                      #while items are in the queue and we are connected process 
 
+                        line_count+=1
                         l = s.recv(1024)                                        #set queue to 1024 bytes
-                        print "%s" % l.rstrip('\n')                             #strip character from each line recieved      
+                        if debug: print "raw line ----> %s  <-----" % l
+                        l = l.replace("\"","")                             #strip character from each line recieved      
                         cut_data = l.split(",")                                 #cut up the comma seperated values sent from scoring server
                         
                         if cut_data[0] == "$B":                               #Process data where the first value in the comma seperated vales is $B
                                 race_desc = cut_data[2]                         #extract the race description
                         
                         if cut_data[0] == "$C":                               #Process data where the first value in the comma seperated vales is $B
-                                race_class = cut_data[2]                        #extract the race class
+                                race_class = cut_data[2]   
+                                                     #extract the race class
+
+                        if cut_data[0] == "$J":
+                                dict_j[[cut_data[1].replace("\"","")]] = {cut_data[1]: {'number': cut_data[2], 'transponder': cut_data[3] }}
 
                         if cut_data[0] == "$F":                               #Process data where the first value in the comma seperated vales is $F
+                                update_comp()                                 # ALL THE RESULTS SHOULD BE IN FROMT HE PREVIOUS SECOND TIME TO UPDATE THE OVERLAY
                                 if debug: print "%s in $F routine" % cut_data[2]
                                 elist.insert(0,cut_data[2])                     #Push latest time left value to elist list
                                 del elist[3:]                                   #Delete all any elist list elements past the 3rd element
@@ -168,6 +218,8 @@ while 1:                                                                        
                                         print "I SHOULD STOP"
                                         stop_recording()
                                         print "I ran stop recording"
+                                        dict_comp.clear()
+                                        dict_g.clear()
                                         is_recording = False                                     #Checks to see if the 3 valies for time remaining are all the same if so stop recording 
                                 if cut_data[4] == "\"0:01\"":                   #Has 1 second of the race elapsed
                                         file = start_recording()                       #If 1 second has elasped start recording
@@ -175,11 +227,44 @@ while 1:                                                                        
                                 #if is_recording:                                #Check to see if we are recording 
                                 update_timeleft()                       #Fire function to update text file with how much time is remaining
 
+                        if cut_data[0] == "$COMP":
+
+                                #print "FOUND COMP"
+                                #print "pushing key %s value %s" % (cut_data[1],cut_data[2]) 
+                                try:
+                                        #print " adding key" + cut_data[1]
+                                        dict_comp[cut_data[1].replace("\"","")] = {cut_data[1]: {'number': cut_data[2], 'transponder': cut_data[3], 'first_name': cut_data[4], 'last_name': cut_data[5] }} #% (cut_data[2],cut_data[3],cut_data[4],cut_data[5]) #{'number': '%s', 'transponder': '%s', 'first_name': '%s', 'last_name': '%s'} % (cut_data[2],cut_data[3],cut_data[4],cut_data[5])}
+                                except:
+                                        print "WRONG"
+                                #print "---------------------------"
+                                #print dict_comp
+                        #if "COMP" in l:
+                        #        print "FOUND COMP %s" % line_count
+                        #        print dict_comp
+                        #        print "pushing key %s value %s" % (cut_data[1],cut_data[2]) 
+                        #        dict_comp[cut_data[1]]=cut_data[2]
+                        #        print dict_comp
+
+
+                        if cut_data[0] == "$G":
+
+                                #dict_g[cut_data[1]] = "%s" % cut_data[2]
+                                try:
+                                        dict_g[cut_data[1]] = {cut_data[1]: {'position': cut_data[1] , 'registration_number': cut_data[2]}} #, 'registration_number': cut_data[3], 'laps': cut_data[4], 'total_time': cut_data[5] }}
+                                except:
+                                        print "WRONG 2"
+                                #print dict_g
+
                         cut_name = "%s %s" % (race_class.rstrip('\n'),race_desc.rstrip('\n'))             #set variable to concatination of $B and $C data
                         if cut_name != race_name:                               #set race_name to new data if it chnages
                                 race_name = cut_name                            #set race_name on updates
                                 set_race_name()                                 #write the data to the textfile
                        
+                        
+                        #dict_g.clear()
+                        #for key in sorted(dict_comp.iterkeys()):
+                        #        print "%s: %s" % (key, dict_comp[key])
+                        
 
                 print('Connection terminated from server side')                 #If we lose the connection this gets printed
 
