@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import schedule
 import time
 
-def set_race_scroll_name(name):
+def set_race_scroll_name(name): #Once the name on the calendar is known, update the text file
     day_of_week = datetime.datetime.today().weekday()
     f = open("standin.txt", "w")
     if day_of_week == 2 and "On Road" in name:
@@ -24,7 +24,7 @@ def set_race_scroll_name(name):
     f.close()
 
 
-def main():
+def main(): #get current day and correlate it to see what race name is on the calendar
     now = datetime.datetime.now()
     site = 'http://www.localendar.com/public/ammdrew'
     hold = 0
@@ -60,11 +60,11 @@ def main():
     set_race_scroll_name(race)
     
     
-main()   
-schedule.every().day.at("5:00").do(main)
+main()   #runs once on startup
+schedule.every().day.at("5:00").do(main) #run every morning at 5, assuming the computer stays on, this will avoid issues of races past midnight
 while True:
     schedule.run_pending()
-    time.sleep(5)
+    time.sleep(5) #sleep and send a heartbeat to terminal
     print '---Scrolling Text Heartbeat---'
 
 
