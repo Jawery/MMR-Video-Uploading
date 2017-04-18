@@ -63,7 +63,7 @@ while 1:                                                                        
                                 
                                 update_timeleft(cut_data[2])                       #Fire function to update text file with how much time is remaining
 
-                        if cut_data[0] == "$COMP":
+                        if cut_data[0] == "$COMP":    #### VERY IMPORTANT TO RETRIEVE EDITED USER SETTING INITIALIZATION FOR COMP_DICT
                                 
                                 try:
                                         dict_comp[cut_data[1].replace("\"","")]['number'] = cut_data[2].replace("\"","")
